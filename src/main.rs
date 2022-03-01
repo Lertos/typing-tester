@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_egui::egui::Color32;
+use bevy_egui::egui::{Align, Button, Color32, Frame, Layout, Stroke, TextEdit, TextStyle};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 // USE
@@ -38,7 +38,9 @@ fn main() {
             position: Some(Vec2::new(0., 0.)),
             ..Default::default()
         })
-        .insert_resource(TestLabel { label: "".to_string()})
+        .insert_resource(InputField {
+            text: "".to_string(),
+        })
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
@@ -49,60 +51,103 @@ fn main() {
                 .with_system(move_to_next_state.after("initial_setup")),
         )
         .add_system_set(
-            SystemSet::on_enter(AppState::Setup)
-                .with_system(move_to_next_state.after("setup")),
+            SystemSet::on_enter(AppState::Setup).with_system(move_to_next_state.after("setup")),
         )
         .add_system_set(SystemSet::on_update(AppState::StartGame).with_system(show_ui))
         .run();
 }
 
-struct TestLabel {
-    label: String
+struct InputField {
+    text: String,
 }
-
-/*
-First things to figure out:
-4. get general design of different modes, layouts, etc.
-3. get general design of screen
-5. get some logic/calculations in place
-*/
 
 fn move_to_next_state(mut app_state: ResMut<State<AppState>>) {
     let next_state = AppState::next(*app_state.current());
     app_state.set(next_state).unwrap();
 }
 
-fn show_ui(mut _label: ResMut<TestLabel>, mut ctx: ResMut<EguiContext>) {
-    
-    egui::TopBottomPanel::top("top_panel").show(ctx.ctx_mut(), |ui| {
-        egui::menu::bar(ui, |ui| {
-            if ui.button(RichText::new("HOME").color(Color32::LIGHT_YELLOW)).clicked() {
-                info!("Clicked HOME");
-            }
-            if ui.button("TEST").clicked() {
-                info!("Clicked TEST");
-            }
-        });
-    });
+fn show_ui(mut input_text: ResMut<InputField>, mut ctx: ResMut<EguiContext>) {
+    let mut start_typing = false;
 
-    egui::SidePanel::left("side_panel").show(ctx.ctx_mut(), |ui| {
-        ui.heading("The Side Panel");
-
-        ui.horizontal(|ui| {
-            ui.label("Name: ");
-            ui.text_edit_singleline(&mut _label.label);
-        });
-
-        ui.label("Known By: ".to_owned() + &_label.label[..]);
-
-        ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Some Footer");
+    egui::SidePanel::left("left_panel")
+        .default_width(200.)
+        .resizable(false)
+        .frame(Frame {
+            margin: egui::Vec2::new(5., 200.),
+            stroke: Stroke::new(3., Color32::KHAKI),
+            ..Default::default()
+        })
+        .show(ctx.ctx_mut(), |ui| {
+            ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                if ui
+                    .button(RichText::new("START").color(Color32::LIGHT_YELLOW))
+                    .clicked()
+                {
+                    start_typing = true;
+                }
+                if ui.button("SCORES").clicked() {}
+                let hover_button =
+                    ui.add(Button::new("HOVER").stroke(Stroke::new(2., Color32::LIGHT_RED)));
+                if hover_button.clicked() {}
+                if hover_button.hovered() {
+                    info!("HOVERED");
+                }
             });
         });
-    });
 
-    egui::CentralPanel::default().show(ctx.ctx_mut(), |ui| {
-        ui.heading("The Central Panel");
-    });
+    egui::CentralPanel::default()
+        .frame(Frame {
+            margin: egui::Vec2::new(200., 100.),
+            ..Default::default()
+        })
+        .show(ctx.ctx_mut(), |ui| {
+            ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                ui.heading("The Central Panel");
+
+                let response = ui.add_sized(
+                    [240.0, 50.0],
+                    TextEdit::singleline(&mut input_text.text).text_style(TextStyle::Heading),
+                );
+
+                //If the start button was clicked, make sure focus is directed towards the input
+                if start_typing {
+                    response.request_focus();
+                }
+
+                // Check if the letter typed is the correct next letter
+                if response.changed() {
+                    //info!("Response changed");
+                }
+                // To make sure the focus is always on the input
+                //if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+                if response.lost_focus() {
+                    //info!("Lost focus");
+                    response.request_focus();
+                }
+
+                ui.add_space(20.);
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("tiny");
+                    ui.label("chickens");
+                    ui.label("abstracted");
+                    ui.label("absorbed");
+                    ui.label("army");
+                    ui.label("responsible");
+                    ui.label("torpid");
+                    ui.label("afternoon");
+                    ui.label("defiant");
+                    ui.label("weak");
+                    ui.label("domineering");
+                    ui.label("park");
+                    ui.label("cough");
+                    ui.label("dramatic");
+                    ui.label("seal");
+                    ui.label("spotty");
+                    ui.label("unique");
+                    ui.label("afford");
+                    ui.label("burst");
+                });
+            });
+        });
 }
