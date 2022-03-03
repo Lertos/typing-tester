@@ -1,5 +1,5 @@
 use bevy_egui::egui::{
-    self, Align2, Button, CentralPanel, Color32, Frame, Response, RichText, SidePanel, Stroke, Ui,
+    self, Align2, Button, CentralPanel, Frame, Response, RichText, SidePanel, Stroke, Ui,
     Vec2, Widget, Window,
 };
 

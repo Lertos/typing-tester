@@ -26,25 +26,17 @@ const INPUT_SIZE: egui::Vec2 = egui::Vec2::new(240., 60.);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
-    InitialSetup,
-    Setup,
-    StartGame,
-}
-
-impl AppState {
-    fn next(state: AppState) -> AppState {
-        match state {
-            AppState::InitialSetup => AppState::Setup,
-            AppState::Setup => AppState::StartGame,
-            AppState::StartGame => AppState::StartGame,
-        }
-    }
+    Menu,
+    Playing,
+    GameOver,
+    Scores,
+    FAQ,
 }
 
 fn main() {
     let mut app = App::new();
 
-    app.add_state(AppState::InitialSetup)
+    app.add_state(AppState::Menu)
         // WINDOW CUSTOMIZATION
         .insert_resource(WindowDescriptor {
             title: "Typing Tester".to_string(),
@@ -61,23 +53,12 @@ fn main() {
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
-        // SYSTEMS
+        // STARTUP SYSTEMS
         .add_startup_system(setup)
-        .add_system_set(
-            SystemSet::on_enter(AppState::InitialSetup)
-                .with_system(setup_fonts.label("initial_setup"))
-                .with_system(move_to_next_state.after("initial_setup")),
-        )
-        .add_system_set(
-            SystemSet::on_enter(AppState::Setup).with_system(move_to_next_state.after("setup")),
-        )
-        .add_system_set(SystemSet::on_update(AppState::StartGame).with_system(show_ui))
+        .add_startup_system(setup_fonts)
+        // SYSTEMS
+        .add_system(show_ui)
         .run();
-}
-
-fn move_to_next_state(mut app_state: ResMut<State<AppState>>) {
-    let next_state = AppState::next(*app_state.current());
-    app_state.set(next_state).unwrap();
 }
 
 fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
