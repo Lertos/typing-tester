@@ -13,7 +13,9 @@ impl Theme {
         visuals.widgets.noninteractive.fg_stroke.color = Color32::WHITE;
         visuals.widgets.noninteractive.corner_radius = 0.;
 
-        visuals.widgets.hovered.bg_fill = Color32::RED;
+        visuals.widgets.inactive.bg_fill = colors::BUTTON_BACKGROUND_COLOR;
+        visuals.widgets.hovered.bg_fill = colors::BUTTON_HOVERED_BACKGROUND_COLOR;
+        visuals.widgets.active.bg_fill = colors::BUTTON_ACTIVE_BACKGROUND_COLOR;
 
         Self { visuals }
     }
