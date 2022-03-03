@@ -1,13 +1,18 @@
 use bevy::prelude::*;
-use bevy_egui::egui::{Align, Button, Color32, Frame, Layout, Stroke, TextEdit, TextStyle};
+use bevy_egui::egui::{Align, Button, Color32, Layout, Stroke, TextEdit, TextStyle, Widget};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 // USE
 use crate::egui::RichText;
 use crate::fonts::setup_fonts;
+use crate::theme::Theme;
+use crate::widgets::{InputField, StyledButton, StyledSidePanel, StyledCentralPanel};
 
 // MODULES
+mod colors;
 mod fonts;
+mod theme;
+mod widgets;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
@@ -38,13 +43,11 @@ fn main() {
             position: Some(Vec2::new(0., 0.)),
             ..Default::default()
         })
-        .insert_resource(InputField {
-            text: "".to_string(),
-        })
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         // SYSTEMS
+        .add_startup_system(setup)
         .add_system_set(
             SystemSet::on_enter(AppState::InitialSetup)
                 .with_system(setup_fonts.label("initial_setup"))
@@ -57,49 +60,52 @@ fn main() {
         .run();
 }
 
-struct InputField {
-    text: String,
-}
-
 fn move_to_next_state(mut app_state: ResMut<State<AppState>>) {
     let next_state = AppState::next(*app_state.current());
     app_state.set(next_state).unwrap();
 }
 
+fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
+    ctx.ctx_mut().set_visuals(Theme::new().visuals().clone());
+
+    commands.insert_resource(InputField {
+        text: String::from(""),
+    })
+}
+
 fn show_ui(mut input_text: ResMut<InputField>, mut ctx: ResMut<EguiContext>) {
     let mut start_typing = false;
 
-    egui::SidePanel::left("left_panel")
-        .default_width(200.)
-        .resizable(false)
-        .frame(Frame {
-            margin: egui::Vec2::new(5., 200.),
-            stroke: Stroke::new(3., Color32::KHAKI),
-            ..Default::default()
-        })
+    StyledSidePanel::new()
+        .side_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-                if ui
-                    .button(RichText::new("START").color(Color32::LIGHT_YELLOW))
-                    .clicked()
-                {
+                
+                //Can change the visuals multiple times throughout the painting of the UI
+                ui.visuals_mut().widgets.hovered.bg_fill = Color32::YELLOW;
+
+                let start_button = ui.add_sized(
+                    [0.0, 180.0], //TODO - calculate this in resize func (minus margin)
+                    Button::new(RichText::new("START").color(Color32::LIGHT_YELLOW)),
+                );
+
+                if start_button.clicked() {
                     start_typing = true;
                 }
+
+                //Change it here too
+                ui.visuals_mut().widgets.hovered.bg_fill = Color32::GREEN;
+
                 if ui.button("SCORES").clicked() {}
                 let hover_button =
                     ui.add(Button::new("HOVER").stroke(Stroke::new(2., Color32::LIGHT_RED)));
                 if hover_button.clicked() {}
-                if hover_button.hovered() {
-                    info!("HOVERED");
-                }
+
+                let new_button = StyledButton::new("NEW").ui(ui);
             });
         });
 
-    egui::CentralPanel::default()
-        .frame(Frame {
-            margin: egui::Vec2::new(200., 100.),
-            ..Default::default()
-        })
+        StyledCentralPanel::new().central_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
                 ui.heading("The Central Panel");
