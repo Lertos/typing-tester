@@ -8,6 +8,7 @@ use crate::fonts::setup_fonts;
 use crate::theme::Theme;
 use crate::widgets::{
     InputField, StyledButton, StyledCentralPanel, StyledSidePanel, WindowForLabels,
+    CENTRAL_PANEL_CONTEXT_WIDTH,
 };
 
 // MODULES
@@ -18,7 +19,7 @@ mod widgets;
 
 // SETUP CONSTANTS
 const MINIMUM_WINDOW_WIDTH: f32 = 800.;
-const MINIMUM_WINDOW_HEIGHT: f32 = 500.;
+const MINIMUM_WINDOW_HEIGHT: f32 = 600.;
 
 const SPACE_BETWEEN_LABELS: f32 = 20.;
 
@@ -27,6 +28,7 @@ const INPUT_SIZE: egui::Vec2 = egui::Vec2::new(240., 60.);
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
     Menu,
+    ReadyToPlay,
     Playing,
     GameOver,
     Scores,
@@ -71,6 +73,7 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
 }
 
 fn show_ui(
+    mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
@@ -83,20 +86,28 @@ fn show_ui(
         .side_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
-                //Can change the visuals multiple times throughout the painting of the UI
-                //ui.visuals_mut().widgets.hovered.bg_fill = Color32::YELLOW;
-
                 let button_start = StyledButton::new("START").ui(ui);
                 if button_start.clicked() {
+                    if app_state.current() != &AppState::ReadyToPlay {
+                        app_state.set(AppState::ReadyToPlay).unwrap();
+                    }
                     input_text.text = "".to_string();
                     input_text.enabled = true;
                 }
 
                 let button_scores = StyledButton::new("SCORES").ui(ui);
-                if button_scores.clicked() {}
+                if button_scores.clicked() {
+                    if app_state.current() != &AppState::Scores {
+                        app_state.set(AppState::Scores).unwrap();
+                    }
+                }
 
-                let button_new = StyledButton::new("NEW").ui(ui);
-                if button_new.clicked() {}
+                let button_new = StyledButton::new("FAQ").ui(ui);
+                if button_new.clicked() {
+                    if app_state.current() != &AppState::FAQ {
+                        app_state.set(AppState::FAQ).unwrap();
+                    }
+                }
             });
         });
 
@@ -104,6 +115,24 @@ fn show_ui(
         .central_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                if app_state.current() == &AppState::Menu {
+                    ui.heading("Press 'Start' to begin");
+                    return;
+                } else if app_state.current() == &AppState::Scores {
+                    ui.heading("TODO: Scores");
+                    return;
+                } else if app_state.current() == &AppState::FAQ {
+                    ui.heading("TODO: FAQ");
+                    return;
+                }
+
+                if app_state.current() == &AppState::ReadyToPlay {
+                    ui.heading("Type to start the timer");
+                } else {
+                    ui.heading("");
+                }
+                ui.add_space(20.);
+
                 let input = ui.add_sized(
                     INPUT_SIZE,
                     TextEdit::singleline(&mut input_text.text)
@@ -117,11 +146,15 @@ fn show_ui(
                 }
                 // If space is pressed, go to the next word
                 if input.changed() && ui.input().key_pressed(egui::Key::Space) {
-                    info!("SPACE PRESSED");
+                    if app_state.current() == &AppState::ReadyToPlay {
+                        app_state.set(AppState::Playing).unwrap();
+                    }
                 }
                 // Check if the letter typed is the correct next letter
                 else if input.changed() {
-                    info!("Response changed");
+                    if app_state.current() == &AppState::ReadyToPlay {
+                        app_state.set(AppState::Playing).unwrap();
+                    }
                 }
                 // To make sure the focus is always on the input
                 if input.lost_focus() {
@@ -130,7 +163,14 @@ fn show_ui(
 
                 ui.add_space(60.);
 
-                WindowForLabels::new().show(ui.ctx(), |ui| {
+                // Used to know where to position the window as its floating and defaults to 0, 0
+                let end_point = ui.label("");
+
+                WindowForLabels::new(
+                    end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
+                    end_point.rect.top(),
+                )
+                .show(ui.ctx(), |ui| {
                     ui.add_space(SPACE_BETWEEN_LABELS);
                     ui.label("tiny chickens abstracted");
                     ui.add_space(SPACE_BETWEEN_LABELS);

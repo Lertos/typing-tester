@@ -1,6 +1,6 @@
 use bevy_egui::egui::{
-    self, Align2, Button, CentralPanel, Frame, Response, RichText, SidePanel, Stroke, Ui,
-    Vec2, Widget, Window,
+    self, Button, CentralPanel, Frame, Pos2, Response, RichText, SidePanel, Stroke, Ui, Vec2,
+    Widget, Window,
 };
 
 use crate::colors;
@@ -9,8 +9,8 @@ const SIDE_PANEL_DEFAULT_WIDTH: f32 = 200.;
 const SIDE_PANEL_TOP_MARGIN: f32 = 200.; //TODO: Calculate based on window height
 const SIDE_PANEL_SIDE_MARGIN: f32 = 10.;
 
-const CENTRAL_PANEL_CONTEXT_WIDTH: f32 = 600.;
-const CENTRAL_PANEL_CONTEXT_HEIGHT: f32 = 200.;
+pub const CENTRAL_PANEL_CONTEXT_WIDTH: f32 = 600.;
+const CENTRAL_PANEL_CONTEXT_HEIGHT: f32 = 100.;
 
 const BUTTON_WIDTH: f32 = SIDE_PANEL_DEFAULT_WIDTH;
 const BUTTON_HEIGHT: f32 = SIDE_PANEL_DEFAULT_WIDTH / 2.;
@@ -49,20 +49,20 @@ impl Widget for StyledButton {
 pub struct WindowForLabels;
 
 impl WindowForLabels {
-    pub fn new() -> Window<'static> {
+    pub fn new(xpos: f32, ypos: f32) -> Window<'static> {
         Window::new("")
             .id(egui::Id::new("window_for_labels"))
             .resizable(false)
             .collapsible(false)
             .title_bar(false)
-            .enabled(true)
+            .enabled(false)
             .frame(Frame {
                 margin: Vec2::new(20., 0.),
                 stroke: Stroke::new(3., colors::BUTTON_STROKE_COLOR),
                 fill: colors::BUTTON_BACKGROUND_COLOR,
                 ..Default::default()
             })
-            .anchor(Align2::CENTER_CENTER, egui::Vec2::new(0., 40.))
+            .current_pos(Pos2::new(xpos, ypos))
     }
 }
 
