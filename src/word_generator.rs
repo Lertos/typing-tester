@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-const WORD_COUNT_PER_GAME: i32 = 12;
+const WORD_COUNT_PER_GAME: i32 = 24; //Should be divisible by 3
 
 pub struct AllWords {
     pub all_words: Vec<String>,
@@ -19,7 +19,7 @@ impl AllWords {
 }
 
 pub struct WordList {
-    pub current_index: u8,
+    pub current_index: i8,
     pub list: Vec<String>,
 }
 

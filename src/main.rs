@@ -23,7 +23,7 @@ mod word_generator;
 const MINIMUM_WINDOW_WIDTH: f32 = 800.;
 const MINIMUM_WINDOW_HEIGHT: f32 = 600.;
 
-const VERT_SPACE_BETWEEN_LABELS: f32 = 20.;
+const VERT_SPACE_BETWEEN_LABELS: f32 = 14.;
 const HORZ_SPACE_BETWEEN_LABELS: f32 = 14.;
 
 const INPUT_SIZE: egui::Vec2 = egui::Vec2::new(240., 60.);
@@ -100,11 +100,12 @@ fn draw_ui(
     mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
     word_list: Res<AllWords>,
-    mut current_words: Option<ResMut<WordList>>,
+    current_words: Option<ResMut<WordList>>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
 ) {
     let input_enabled = input_text.enabled;
+    let mut index_increased = false;
 
     let window = windows.get_primary_mut().unwrap();
 
@@ -179,7 +180,7 @@ fn draw_ui(
                     }
                     // If space is pressed and the game has started; move to the next word
                     else if app_state.current() == &AppState::Playing {
-                        //Increase current index etc
+                        index_increased = true;
                     }
                 }
                 // Check if the letter typed is the correct next letter
@@ -202,12 +203,17 @@ fn draw_ui(
 
                 ui.add_space(60.);
 
-                if let Some(words) = current_words {
+                if let Some(mut words) = current_words {
+                    if index_increased {
+                        words.current_index += 1;
+                    }
+
                     // Used to know where to position the window as windows float and default to 0, 0
                     let end_point = ui.label("");
 
-                    let rows = 4;
-                    let words_per_row = 3;
+                    let rows: usize = 4;
+                    let words_per_row: usize = 3;
+
                     let mut available_line_widths = Vec::<f32>::new();
 
                     // This window is here to find the available line widths so we can center labels...
@@ -218,17 +224,19 @@ fn draw_ui(
                         3000.0,
                     )
                     .show(ui.ctx(), |ui| {
+                        // To make sure words consisting of many labels stay together
+                        ui.style_mut().spacing.item_spacing.x = 0.;
+                        ui.style_mut().spacing.window_padding.x = 0.;
+
                         //TODO: All of this logic needs to change as it doesnt take into account current index/word etc
                         //It's simply to show how it would look to make sure centering works
                         for row in 0..rows {
                             ui.horizontal(|ui| {
-                                // To make sure words consisting of many labels stay together
-                                ui.style_mut().spacing.item_spacing.x = 0.;
-                                ui.style_mut().spacing.window_padding.x = 0.;
 
                                 for word_index in 0..words_per_row {
+                                    let current_row = (words.current_index as f32 / words_per_row as f32).floor() as usize;
                                     let current_word =
-                                        &words.list[(row * words_per_row) + word_index];
+                                        &words.list[(row * words_per_row) + word_index + (current_row * words_per_row) as usize];
                                     let left_side = &current_word[..1];
                                     let right_side = &current_word[1..];
 
@@ -258,16 +266,18 @@ fn draw_ui(
                         ui.style_mut().spacing.item_spacing.x = 0.;
                         ui.style_mut().spacing.window_padding.x = 0.;
 
-                        ui.add_space(VERT_SPACE_BETWEEN_LABELS);
-
                         for row in 0..rows {
                             let unused_width = available_line_widths[row];
+
+                            ui.add_space(VERT_SPACE_BETWEEN_LABELS);
+
                             ui.horizontal(|ui| {
                                 ui.add_space(unused_width / 4.);
 
                                 for word_index in 0..words_per_row {
+                                    let current_row = (words.current_index as f32 / words_per_row as f32).floor() as usize;
                                     let current_word =
-                                        &words.list[(row * words_per_row) + word_index];
+                                        &words.list[(row * words_per_row) + word_index + (current_row * words_per_row) as usize];
                                     let left_side = &current_word[..1];
                                     let right_side = &current_word[1..];
 
