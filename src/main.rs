@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::window::WindowResizeConstraints;
-use bevy_egui::egui::{Align, Layout, TextEdit, TextStyle, Widget};
+use bevy_egui::egui::{Align, Color32, Label, Layout, RichText, TextEdit, TextStyle, Widget};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 // USE
@@ -10,18 +10,21 @@ use crate::widgets::{
     InputField, StyledButton, StyledCentralPanel, StyledSidePanel, WindowForLabels,
     CENTRAL_PANEL_CONTEXT_WIDTH,
 };
+use crate::word_generator::{AllWords, WordList};
 
 // MODULES
 mod colors;
 mod fonts;
 mod theme;
 mod widgets;
+mod word_generator;
 
 // SETUP CONSTANTS
 const MINIMUM_WINDOW_WIDTH: f32 = 800.;
 const MINIMUM_WINDOW_HEIGHT: f32 = 600.;
 
-const SPACE_BETWEEN_LABELS: f32 = 20.;
+const VERT_SPACE_BETWEEN_LABELS: f32 = 20.;
+const HORZ_SPACE_BETWEEN_LABELS: f32 = 14.;
 
 const INPUT_SIZE: egui::Vec2 = egui::Vec2::new(240., 60.);
 
@@ -33,6 +36,12 @@ pub enum AppState {
     GameOver,
     Scores,
     FAQ,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq, StageLabel)]
+enum Stage {
+    DrawPanels,
+    DrawWindows,
 }
 
 fn main() {
@@ -55,11 +64,23 @@ fn main() {
         // PLUGINS
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
+        // STAGES
+        .add_stage_after(
+            CoreStage::Update,
+            Stage::DrawPanels,
+            SystemStage::parallel(),
+        )
+        .add_stage_after(
+            Stage::DrawPanels,
+            Stage::DrawWindows,
+            SystemStage::parallel(),
+        )
         // STARTUP SYSTEMS
         .add_startup_system(setup)
         .add_startup_system(setup_fonts)
         // SYSTEMS
-        .add_system(show_ui)
+        .add_system_to_stage(Stage::DrawPanels, draw_ui)
+        //.add_system_to_stage(Stage::DrawWindows, draw_windows)
         .run();
 }
 
@@ -69,12 +90,17 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
     commands.insert_resource(InputField {
         text: String::from("TYPE HERE"),
         enabled: false,
-    })
+    });
+
+    commands.insert_resource(AllWords::new());
 }
 
-fn show_ui(
+fn draw_ui(
+    mut commands: Commands,
     mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
+    word_list: Res<AllWords>,
+    mut current_words: Option<ResMut<WordList>>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
 ) {
@@ -90,6 +116,7 @@ fn show_ui(
                 if button_start.clicked() {
                     if app_state.current() != &AppState::ReadyToPlay {
                         app_state.set(AppState::ReadyToPlay).unwrap();
+                        commands.insert_resource(WordList::new(word_list.all_words.clone()));
                     }
                     input_text.text = "".to_string();
                     input_text.enabled = true;
@@ -111,12 +138,12 @@ fn show_ui(
             });
         });
 
-    StyledCentralPanel::new(window.width(), window.height())
+    StyledCentralPanel::new(window.width())
         .central_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
                 if app_state.current() == &AppState::Menu {
-                    ui.heading("Press 'Start' to begin");
+                    ui.heading("Press Start");
                     return;
                 } else if app_state.current() == &AppState::Scores {
                     ui.heading("TODO: Scores");
@@ -127,7 +154,7 @@ fn show_ui(
                 }
 
                 if app_state.current() == &AppState::ReadyToPlay {
-                    ui.heading("Type to start the timer");
+                    ui.heading("Type to Begin");
                 } else {
                     ui.heading("");
                 }
@@ -144,16 +171,28 @@ fn show_ui(
                 if input_enabled {
                     input.request_focus();
                 }
-                // If space is pressed, go to the next word
+
                 if input.changed() && ui.input().key_pressed(egui::Key::Space) {
+                    // If the game hasn't started - ignore spaces
                     if app_state.current() == &AppState::ReadyToPlay {
-                        app_state.set(AppState::Playing).unwrap();
+                        input_text.text = "".to_string();
+                    }
+                    // If space is pressed and the game has started; move to the next word
+                    else if app_state.current() == &AppState::Playing {
+                        //Increase current index etc
                     }
                 }
                 // Check if the letter typed is the correct next letter
                 else if input.changed() {
+                    // Start the game
                     if app_state.current() == &AppState::ReadyToPlay {
                         app_state.set(AppState::Playing).unwrap();
+                    }
+
+                    if app_state.current() == &AppState::ReadyToPlay
+                        || app_state.current() == &AppState::Playing
+                    {
+                        //Logic to check correct/incorrect of key pressed versus word
                     }
                 }
                 // To make sure the focus is always on the input
@@ -163,24 +202,94 @@ fn show_ui(
 
                 ui.add_space(60.);
 
-                // Used to know where to position the window as its floating and defaults to 0, 0
-                let end_point = ui.label("");
+                if let Some(words) = current_words {
+                    // Used to know where to position the window as windows float and default to 0, 0
+                    let end_point = ui.label("");
 
-                WindowForLabels::new(
-                    end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
-                    end_point.rect.top(),
-                )
-                .show(ui.ctx(), |ui| {
-                    ui.add_space(SPACE_BETWEEN_LABELS);
-                    ui.label("tiny chickens abstracted");
-                    ui.add_space(SPACE_BETWEEN_LABELS);
-                    ui.label("absorbed army responsible");
-                    ui.add_space(SPACE_BETWEEN_LABELS);
-                    ui.label("torpid afternoon defiant");
-                    ui.add_space(SPACE_BETWEEN_LABELS);
-                    ui.label("weak domineering park");
-                    ui.add_space(SPACE_BETWEEN_LABELS);
-                });
+                    let rows = 4;
+                    let words_per_row = 3;
+                    let mut available_line_widths = Vec::<f32>::new();
+
+                    // This window is here to find the available line widths so we can center labels...
+                    // I hate doing this - but immediate mode doesn't give another way. You can't even
+                    // delete or hide ui elements from what I've found...
+                    WindowForLabels::new(
+                        3000.0, //Arbitrary numbers off-screen
+                        3000.0,
+                    )
+                    .show(ui.ctx(), |ui| {
+                        //TODO: All of this logic needs to change as it doesnt take into account current index/word etc
+                        //It's simply to show how it would look to make sure centering works
+                        for row in 0..rows {
+                            ui.horizontal(|ui| {
+                                // To make sure words consisting of many labels stay together
+                                ui.style_mut().spacing.item_spacing.x = 0.;
+                                ui.style_mut().spacing.window_padding.x = 0.;
+
+                                for word_index in 0..words_per_row {
+                                    let current_word =
+                                        &words.list[(row * words_per_row) + word_index];
+                                    let left_side = &current_word[..1];
+                                    let right_side = &current_word[1..];
+
+                                    ui.add(Label::new(
+                                        RichText::new(left_side).color(Color32::RED),
+                                    ));
+                                    ui.add(Label::new(
+                                        RichText::new(right_side).color(Color32::WHITE),
+                                    ));
+
+                                    if word_index < words_per_row - 1 {
+                                        ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
+                                    }
+                                }
+                                available_line_widths.push(ui.available_width());
+                            });
+                        }
+                    });
+
+                    // This window is visible window that shows the player the words they need to type
+                    WindowForLabels::new(
+                        end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
+                        end_point.rect.top(),
+                    )
+                    .show(ui.ctx(), |ui| {
+                        // To make sure words consisting of many labels stay together
+                        ui.style_mut().spacing.item_spacing.x = 0.;
+                        ui.style_mut().spacing.window_padding.x = 0.;
+
+                        ui.add_space(VERT_SPACE_BETWEEN_LABELS);
+
+                        for row in 0..rows {
+                            let unused_width = available_line_widths[row];
+                            ui.horizontal(|ui| {
+                                ui.add_space(unused_width / 4.);
+
+                                for word_index in 0..words_per_row {
+                                    let current_word =
+                                        &words.list[(row * words_per_row) + word_index];
+                                    let left_side = &current_word[..1];
+                                    let right_side = &current_word[1..];
+
+                                    ui.add(Label::new(
+                                        RichText::new(left_side).color(Color32::RED),
+                                    ));
+                                    ui.add(Label::new(
+                                        RichText::new(right_side).color(Color32::WHITE),
+                                    ));
+
+                                    if word_index < words_per_row - 1 {
+                                        ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
+                                    }
+                                }
+
+                                ui.add_space(unused_width / 4.);
+                            });
+                        }
+
+                        ui.add_space(VERT_SPACE_BETWEEN_LABELS);
+                    });
+                }
             });
         });
 }

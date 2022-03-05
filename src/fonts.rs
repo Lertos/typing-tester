@@ -24,7 +24,7 @@ pub fn setup_fonts(mut ctx: ResMut<EguiContext>) {
 
     fonts
         .family_and_size
-        .insert(TextStyle::Body, (FontFamily::Monospace, 22.0));
+        .insert(TextStyle::Body, (FontFamily::Monospace, 26.0));
 
     fonts
         .family_and_size
