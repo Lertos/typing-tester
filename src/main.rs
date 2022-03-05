@@ -10,7 +10,7 @@ use crate::widgets::{
     InputField, StyledButton, StyledCentralPanel, StyledSidePanel, WindowForLabels,
     CENTRAL_PANEL_CONTEXT_WIDTH,
 };
-use crate::word_generator::{AllWords, WordList};
+use crate::word_generator::{AllWords, PlayerWordList, WordList, WordListIndex};
 
 // MODULES
 mod colors;
@@ -92,15 +92,16 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
         enabled: false,
     });
 
-    commands.insert_resource(AllWords::new());
+    create_new_word_list(commands);
 }
 
 fn draw_ui(
-    mut commands: Commands,
+    commands: Commands,
     mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
-    word_list: Res<AllWords>,
-    current_words: Option<ResMut<WordList>>,
+    word_list: ResMut<WordList>,
+    mut player_word_list: ResMut<PlayerWordList>,
+    mut word_list_index: ResMut<WordListIndex>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
 ) {
@@ -117,7 +118,7 @@ fn draw_ui(
                 if button_start.clicked() {
                     if app_state.current() != &AppState::ReadyToPlay {
                         app_state.set(AppState::ReadyToPlay).unwrap();
-                        commands.insert_resource(WordList::new(word_list.all_words.clone()));
+                        create_new_word_list(commands);
                     }
                     input_text.text = "".to_string();
                     input_text.enabled = true;
@@ -203,112 +204,122 @@ fn draw_ui(
 
                 ui.add_space(60.);
 
-                // If the word list for the specific game instance has been generated
-                if let Some(mut words) = current_words {
-                    if index_increased {
-                        words.current_index += 1;
+                // Used to know where to position the window as windows float and default to 0, 0
+                let end_point = ui.label("");
+
+                let rows: usize = 4;
+                let words_per_row: usize = 3;
+
+                let mut available_line_widths = Vec::<f32>::new();
+
+                // This window is here to find the available line widths so we can center labels
+                WindowForLabels::new(
+                    3000.0, //Arbitrary numbers off-screen
+                    3000.0,
+                )
+                .show(ui.ctx(), |ui| {
+                    // To make sure words consisting of many labels stay together
+                    ui.style_mut().spacing.item_spacing.x = 0.;
+                    ui.style_mut().spacing.window_padding.x = 0.;
+
+                    for row in 0..rows {
+                        ui.horizontal(|ui| {
+                            for word_index in 0..words_per_row {
+                                let current_index = get_current_word_index(
+                                    row,
+                                    word_index,
+                                    word_list_index.current_index,
+                                    words_per_row,
+                                );
+                                let current_word = &word_list.list[current_index];
+                                let previous_input =
+                                    get_previous_input(&player_word_list.list, current_index);
+
+                                add_word_to_ui(
+                                    ui,
+                                    word_list_index.current_index,
+                                    current_index,
+                                    &input_text.text,
+                                    &previous_input,
+                                    &current_word,
+                                );
+
+                                if word_index < words_per_row - 1 {
+                                    ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
+                                }
+                            }
+                            available_line_widths.push(ui.available_width());
+                        });
                     }
+                });
 
-                    // Used to know where to position the window as windows float and default to 0, 0
-                    let end_point = ui.label("");
+                // This window is visible window that shows the player the words they need to type
+                WindowForLabels::new(
+                    end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
+                    end_point.rect.top(),
+                )
+                .show(ui.ctx(), |ui| {
+                    // To make sure words consisting of many labels stay together
+                    ui.style_mut().spacing.item_spacing.x = 0.;
+                    ui.style_mut().spacing.window_padding.x = 0.;
 
-                    let rows: usize = 4;
-                    let words_per_row: usize = 3;
-
-                    let mut available_line_widths = Vec::<f32>::new();
-
-                    // This window is here to find the available line widths so we can center labels
-                    WindowForLabels::new(
-                        3000.0, //Arbitrary numbers off-screen
-                        3000.0,
-                    )
-                    .show(ui.ctx(), |ui| {
-                        // To make sure words consisting of many labels stay together
-                        ui.style_mut().spacing.item_spacing.x = 0.;
-                        ui.style_mut().spacing.window_padding.x = 0.;
-
-                        for row in 0..rows {
-                            ui.horizontal(|ui| {
-                                for word_index in 0..words_per_row {
-                                    let current_index = get_current_word_index(
-                                        row,
-                                        word_index,
-                                        words.current_index,
-                                        words_per_row,
-                                    );
-                                    let current_word = &words.list[current_index];
-
-                                    add_word_to_ui(
-                                        ui,
-                                        words.current_index,
-                                        current_index,
-                                        &input_text.text,
-                                        &current_word,
-                                    );
-
-                                    if word_index < words_per_row - 1 {
-                                        ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
-                                    }
-                                }
-                                available_line_widths.push(ui.available_width());
-                            });
-                        }
-                    });
-
-                    // This window is visible window that shows the player the words they need to type
-                    WindowForLabels::new(
-                        end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
-                        end_point.rect.top(),
-                    )
-                    .show(ui.ctx(), |ui| {
-                        // To make sure words consisting of many labels stay together
-                        ui.style_mut().spacing.item_spacing.x = 0.;
-                        ui.style_mut().spacing.window_padding.x = 0.;
-
-                        for row in 0..rows {
-                            let unused_width = available_line_widths[row];
-
-                            ui.add_space(VERT_SPACE_BETWEEN_LABELS);
-
-                            ui.horizontal(|ui| {
-                                ui.add_space(unused_width / 4.);
-
-                                for word_index in 0..words_per_row {
-                                    let current_index = get_current_word_index(
-                                        row,
-                                        word_index,
-                                        words.current_index,
-                                        words_per_row,
-                                    );
-                                    let current_word = &words.list[current_index];
-
-                                    add_word_to_ui(
-                                        ui,
-                                        words.current_index,
-                                        current_index,
-                                        &input_text.text,
-                                        &current_word,
-                                    );
-
-                                    if word_index < words_per_row - 1 {
-                                        ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
-                                    }
-                                }
-
-                                ui.add_space(unused_width / 4.);
-                            });
-                        }
+                    for row in 0..rows {
+                        let unused_width = available_line_widths[row];
 
                         ui.add_space(VERT_SPACE_BETWEEN_LABELS);
-                    });
 
-                    //Clear the input field for the next round of typing
-                    if index_increased {
-                        input_text.text = "".to_string();
+                        ui.horizontal(|ui| {
+                            ui.add_space(unused_width / 4.);
+
+                            for word_index in 0..words_per_row {
+                                let current_index = get_current_word_index(
+                                    row,
+                                    word_index,
+                                    word_list_index.current_index,
+                                    words_per_row,
+                                );
+                                let current_word = &word_list.list[current_index];
+                                let previous_input =
+                                    get_previous_input(&player_word_list.list, current_index);
+
+                                add_word_to_ui(
+                                    ui,
+                                    word_list_index.current_index,
+                                    current_index,
+                                    &input_text.text,
+                                    &previous_input,
+                                    &current_word,
+                                );
+
+                                if word_index < words_per_row - 1 {
+                                    ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
+                                }
+                            }
+
+                            ui.add_space(unused_width / 4.);
+                        });
                     }
+
+                    ui.add_space(VERT_SPACE_BETWEEN_LABELS);
+                });
+
+                //Clear the input field for the next round of typing
+                if index_increased {
+                    word_list_index.current_index += 1;
+                    player_word_list.list.push(input_text.text.to_string());
+                    input_text.text = "".to_string();
                 }
             });
         });
+}
+
+fn create_new_word_list(mut commands: Commands) {
+    let all_words = AllWords::new();
+
+    commands.insert_resource(AllWords::new());
+    commands.insert_resource(WordList::new(all_words.all_words.clone()));
+    commands.insert_resource(PlayerWordList::new());
+    commands.insert_resource(WordListIndex { current_index: 0 });
 }
 
 fn get_current_word_index(
@@ -320,31 +331,63 @@ fn get_current_word_index(
     let current_row = (current_index as f32 / words_per_row as f32).floor();
     let word_list_index =
         (row_index * words_per_row) + word_index + (current_row as usize * words_per_row);
-    return word_list_index as usize;
+    word_list_index as usize
+}
+
+fn get_previous_input(player_word_list: &Vec<String>, index: usize) -> String {
+    if index < player_word_list.len() {
+        player_word_list[index].to_string()
+    } else {
+        "".to_string()
+    }
 }
 
 fn add_word_to_ui(
     ui: &mut Ui,
-    current_index: usize,
+    player_index: usize,
     word_index: usize,
     current_input: &String,
+    previous_input: &String,
     current_word: &String,
 ) {
     // If this isn't the current word being typed
-    if current_index != word_index {
-        ui.add(Label::new(
-            RichText::new(&current_word[..]).color(Color32::WHITE),
-        ));
+    if player_index != word_index {
+        if word_index > player_index {
+            ui.add(Label::new(
+                RichText::new(&current_word[..]).color(Color32::WHITE),
+            ));
+        } else if previous_input.trim() == current_word.trim() {
+            ui.add(Label::new(
+                RichText::new(&current_word[..]).color(Color32::GREEN),
+            ));
+        } else {
+            ui.add(Label::new(
+                RichText::new(&current_word[..]).color(Color32::RED),
+            ));
+        }
     } else {
         // Check how far into the word we are and if they match
         let length_typed = current_input.len();
         let word_length = current_word.len();
-        
-        if length_typed < word_length {
-            ui.add(Label::new(RichText::new(&current_word[..length_typed]).color(Color32::RED)));
-            ui.add(Label::new(RichText::new(&current_word[length_typed..]).color(Color32::WHITE)));
-        } else {
-            ui.add(Label::new(RichText::new(&current_word[..]).color(Color32::RED)));
+
+        for letter in 0..word_length {
+            if letter < length_typed {
+                if one_char(&current_word, letter) == one_char(&current_input, letter) {
+                    create_label(ui, one_char(&current_word, letter), Color32::WHITE);
+                } else {
+                    create_label(ui, one_char(&current_word, letter), Color32::RED);
+                }
+            } else {
+                create_label(ui, one_char(&current_word, letter), Color32::WHITE);
+            }
         }
     }
+}
+
+fn one_char(word: &str, letter: usize) -> &str {
+    &word[letter..letter + 1]
+}
+
+fn create_label(ui: &mut Ui, letter: &str, color: Color32) {
+    ui.add(Label::new(RichText::new(letter).color(color)));
 }
