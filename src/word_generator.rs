@@ -19,7 +19,7 @@ impl AllWords {
 }
 
 pub struct WordList {
-    pub current_index: i8,
+    pub current_index: usize,
     pub list: Vec<String>,
 }
 

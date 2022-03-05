@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::window::WindowResizeConstraints;
-use bevy_egui::egui::{Align, Color32, Label, Layout, RichText, TextEdit, TextStyle, Widget};
+use bevy_egui::egui::{Align, Color32, Label, Layout, RichText, TextEdit, TextStyle, Ui, Widget};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 // USE
@@ -88,7 +88,7 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
     ctx.ctx_mut().set_visuals(Theme::new().visuals().clone());
 
     commands.insert_resource(InputField {
-        text: String::from("TYPE HERE"),
+        text: String::from(""),
         enabled: false,
     });
 
@@ -203,6 +203,7 @@ fn draw_ui(
 
                 ui.add_space(60.);
 
+                // If the word list for the specific game instance has been generated
                 if let Some(mut words) = current_words {
                     if index_increased {
                         words.current_index += 1;
@@ -216,9 +217,7 @@ fn draw_ui(
 
                     let mut available_line_widths = Vec::<f32>::new();
 
-                    // This window is here to find the available line widths so we can center labels...
-                    // I hate doing this - but immediate mode doesn't give another way. You can't even
-                    // delete or hide ui elements from what I've found...
+                    // This window is here to find the available line widths so we can center labels
                     WindowForLabels::new(
                         3000.0, //Arbitrary numbers off-screen
                         3000.0,
@@ -228,24 +227,24 @@ fn draw_ui(
                         ui.style_mut().spacing.item_spacing.x = 0.;
                         ui.style_mut().spacing.window_padding.x = 0.;
 
-                        //TODO: All of this logic needs to change as it doesnt take into account current index/word etc
-                        //It's simply to show how it would look to make sure centering works
                         for row in 0..rows {
                             ui.horizontal(|ui| {
-
                                 for word_index in 0..words_per_row {
-                                    let current_row = (words.current_index as f32 / words_per_row as f32).floor() as usize;
-                                    let current_word =
-                                        &words.list[(row * words_per_row) + word_index + (current_row * words_per_row) as usize];
-                                    let left_side = &current_word[..1];
-                                    let right_side = &current_word[1..];
+                                    let current_index = get_current_word_index(
+                                        row,
+                                        word_index,
+                                        words.current_index,
+                                        words_per_row,
+                                    );
+                                    let current_word = &words.list[current_index];
 
-                                    ui.add(Label::new(
-                                        RichText::new(left_side).color(Color32::RED),
-                                    ));
-                                    ui.add(Label::new(
-                                        RichText::new(right_side).color(Color32::WHITE),
-                                    ));
+                                    add_word_to_ui(
+                                        ui,
+                                        words.current_index,
+                                        current_index,
+                                        &input_text.text,
+                                        &current_word,
+                                    );
 
                                     if word_index < words_per_row - 1 {
                                         ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
@@ -275,18 +274,21 @@ fn draw_ui(
                                 ui.add_space(unused_width / 4.);
 
                                 for word_index in 0..words_per_row {
-                                    let current_row = (words.current_index as f32 / words_per_row as f32).floor() as usize;
-                                    let current_word =
-                                        &words.list[(row * words_per_row) + word_index + (current_row * words_per_row) as usize];
-                                    let left_side = &current_word[..1];
-                                    let right_side = &current_word[1..];
+                                    let current_index = get_current_word_index(
+                                        row,
+                                        word_index,
+                                        words.current_index,
+                                        words_per_row,
+                                    );
+                                    let current_word = &words.list[current_index];
 
-                                    ui.add(Label::new(
-                                        RichText::new(left_side).color(Color32::RED),
-                                    ));
-                                    ui.add(Label::new(
-                                        RichText::new(right_side).color(Color32::WHITE),
-                                    ));
+                                    add_word_to_ui(
+                                        ui,
+                                        words.current_index,
+                                        current_index,
+                                        &input_text.text,
+                                        &current_word,
+                                    );
 
                                     if word_index < words_per_row - 1 {
                                         ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
@@ -299,7 +301,50 @@ fn draw_ui(
 
                         ui.add_space(VERT_SPACE_BETWEEN_LABELS);
                     });
+
+                    //Clear the input field for the next round of typing
+                    if index_increased {
+                        input_text.text = "".to_string();
+                    }
                 }
             });
         });
+}
+
+fn get_current_word_index(
+    row_index: usize,
+    word_index: usize,
+    current_index: usize,
+    words_per_row: usize,
+) -> usize {
+    let current_row = (current_index as f32 / words_per_row as f32).floor();
+    let word_list_index =
+        (row_index * words_per_row) + word_index + (current_row as usize * words_per_row);
+    return word_list_index as usize;
+}
+
+fn add_word_to_ui(
+    ui: &mut Ui,
+    current_index: usize,
+    word_index: usize,
+    current_input: &String,
+    current_word: &String,
+) {
+    // If this isn't the current word being typed
+    if current_index != word_index {
+        ui.add(Label::new(
+            RichText::new(&current_word[..]).color(Color32::WHITE),
+        ));
+    } else {
+        // Check how far into the word we are and if they match
+        let length_typed = current_input.len();
+        let word_length = current_word.len();
+        
+        if length_typed < word_length {
+            ui.add(Label::new(RichText::new(&current_word[..length_typed]).color(Color32::RED)));
+            ui.add(Label::new(RichText::new(&current_word[length_typed..]).color(Color32::WHITE)));
+        } else {
+            ui.add(Label::new(RichText::new(&current_word[..]).color(Color32::RED)));
+        }
+    }
 }
