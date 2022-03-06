@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::WindowResizeConstraints;
 use bevy_egui::egui::{Align, Color32, Label, Layout, RichText, TextEdit, TextStyle, Ui, Widget};
 use bevy_egui::{egui, EguiContext, EguiPlugin};
+use std::cmp::max;
 
 // USE
 use crate::fonts::setup_fonts;
@@ -344,8 +345,9 @@ fn get_current_word_index(
     words_per_row: usize,
 ) -> usize {
     let current_row = (current_index as f32 / words_per_row as f32).floor();
-    let word_list_index =
-        (row_index * words_per_row) + word_index + (current_row as usize * words_per_row);
+    let word_list_index = (row_index * words_per_row)
+        + word_index
+        + (max((current_row as i8) - 1, 0) * words_per_row as i8) as usize;
     word_list_index as usize
 }
 
