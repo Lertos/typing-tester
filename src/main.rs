@@ -106,7 +106,7 @@ fn draw_ui(
     mut windows: ResMut<Windows>,
 ) {
     let input_enabled = input_text.enabled;
-    let mut index_increased = false;
+    let mut move_index_by = 0;
 
     let window = windows.get_primary_mut().unwrap();
 
@@ -181,7 +181,15 @@ fn draw_ui(
                     }
                     // If space is pressed and the game has started; move to the next word
                     else if app_state.current() == &AppState::Playing {
-                        index_increased = true;
+                        move_index_by = 1;
+                    }
+                }
+                // Load previous input contents on backspace
+                else if input.changed() && ui.input().key_pressed(egui::Key::Backspace) {
+                    if app_state.current() == &AppState::Playing {
+                        if word_list_index.current_index > 0 && input_text.text.is_empty() {
+                            move_index_by = -1;
+                        }
                     }
                 }
                 // Check if the letter typed is the correct next letter
@@ -304,10 +312,14 @@ fn draw_ui(
                 });
 
                 //Clear the input field for the next round of typing
-                if index_increased {
+                if move_index_by == 1 {
                     word_list_index.current_index += 1;
                     player_word_list.list.push(input_text.text.to_string());
                     input_text.text = "".to_string();
+                } else if move_index_by == -1 {
+                    word_list_index.current_index -= 1;
+                    input_text.text =
+                        player_word_list.list[word_list_index.current_index].to_string();
                 }
             });
         });
@@ -389,5 +401,9 @@ fn one_char(word: &str, letter: usize) -> &str {
 }
 
 fn create_label(ui: &mut Ui, letter: &str, color: Color32) {
-    ui.add(Label::new(RichText::new(letter).color(color)));
+    ui.add(Label::new(
+        RichText::new(letter)
+            .color(color)
+            .background_color(Color32::BLACK),
+    ));
 }
