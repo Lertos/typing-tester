@@ -8,7 +8,6 @@ use crate::fonts::setup_fonts;
 use crate::theme::Theme;
 use crate::widgets::{
     InputField, StyledButton, StyledCentralPanel, StyledSidePanel, WindowForLabels,
-    CENTRAL_PANEL_CONTEXT_WIDTH,
 };
 use crate::word_generator::{AllWords, PlayerWordList, WordList, WordListIndex};
 
@@ -222,6 +221,7 @@ fn draw_ui(
 
                 // This window is here to find the available line widths so we can center labels
                 WindowForLabels::new(
+                    window.width(),
                     3000.0, //Arbitrary numbers off-screen
                     3000.0,
                 )
@@ -262,54 +262,53 @@ fn draw_ui(
                 });
 
                 // This window is visible window that shows the player the words they need to type
-                WindowForLabels::new(
-                    end_point.rect.left() - (CENTRAL_PANEL_CONTEXT_WIDTH / 4.),
-                    end_point.rect.top(),
-                )
-                .show(ui.ctx(), |ui| {
-                    // To make sure words consisting of many labels stay together
-                    ui.style_mut().spacing.item_spacing.x = 0.;
-                    ui.style_mut().spacing.window_padding.x = 0.;
+                WindowForLabels::new(window.width(), 0., end_point.rect.top()).show(
+                    ui.ctx(),
+                    |ui| {
+                        // To make sure words consisting of many labels stay together
+                        ui.style_mut().spacing.item_spacing.x = 0.;
+                        ui.style_mut().spacing.window_padding.x = 0.;
 
-                    for row in 0..rows {
-                        let unused_width = available_line_widths[row];
+                        for row in 0..rows {
+                            let unused_width = available_line_widths[row];
+
+                            ui.add_space(VERT_SPACE_BETWEEN_LABELS);
+
+                            ui.horizontal(|ui| {
+                                ui.add_space(unused_width / 4.);
+
+                                for word_index in 0..words_per_row {
+                                    let current_index = get_current_word_index(
+                                        row,
+                                        word_index,
+                                        word_list_index.current_index,
+                                        words_per_row,
+                                    );
+                                    let current_word = &word_list.list[current_index];
+                                    let previous_input =
+                                        get_previous_input(&player_word_list.list, current_index);
+
+                                    add_word_to_ui(
+                                        ui,
+                                        word_list_index.current_index,
+                                        current_index,
+                                        &input_text.text,
+                                        &previous_input,
+                                        &current_word,
+                                    );
+
+                                    if word_index < words_per_row - 1 {
+                                        ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
+                                    }
+                                }
+
+                                ui.add_space(unused_width / 4.);
+                            });
+                        }
 
                         ui.add_space(VERT_SPACE_BETWEEN_LABELS);
-
-                        ui.horizontal(|ui| {
-                            ui.add_space(unused_width / 4.);
-
-                            for word_index in 0..words_per_row {
-                                let current_index = get_current_word_index(
-                                    row,
-                                    word_index,
-                                    word_list_index.current_index,
-                                    words_per_row,
-                                );
-                                let current_word = &word_list.list[current_index];
-                                let previous_input =
-                                    get_previous_input(&player_word_list.list, current_index);
-
-                                add_word_to_ui(
-                                    ui,
-                                    word_list_index.current_index,
-                                    current_index,
-                                    &input_text.text,
-                                    &previous_input,
-                                    &current_word,
-                                );
-
-                                if word_index < words_per_row - 1 {
-                                    ui.add_space(HORZ_SPACE_BETWEEN_LABELS);
-                                }
-                            }
-
-                            ui.add_space(unused_width / 4.);
-                        });
-                    }
-
-                    ui.add_space(VERT_SPACE_BETWEEN_LABELS);
-                });
+                    },
+                );
 
                 //Clear the input field for the next round of typing
                 if move_index_by == 1 {

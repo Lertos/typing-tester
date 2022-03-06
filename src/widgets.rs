@@ -9,7 +9,7 @@ const SIDE_PANEL_DEFAULT_WIDTH: f32 = 200.;
 const SIDE_PANEL_TOP_MARGIN: f32 = 200.; //TODO: Calculate based on window height
 const SIDE_PANEL_SIDE_MARGIN: f32 = 10.;
 
-pub const CENTRAL_PANEL_CONTEXT_WIDTH: f32 = 700.; //TODO: Figure out why changing this doesn't always center the windows after
+pub const CENTRAL_PANEL_CONTEXT_WIDTH: f32 = 700.;
 const CENTRAL_PANEL_CONTEXT_HEIGHT: f32 = 100.;
 
 const BUTTON_WIDTH: f32 = SIDE_PANEL_DEFAULT_WIDTH;
@@ -49,15 +49,24 @@ impl Widget for StyledButton {
 pub struct WindowForLabels;
 
 impl WindowForLabels {
-    pub fn new(xpos: f32, ypos: f32) -> Window<'static> {
+    pub fn new(window_width: f32, mut xpos: f32, ypos: f32) -> Window<'static> {
+        // To avoid the below calculation for the window that is only there for getting widths
+        if xpos == 0. {
+            xpos = (window_width / 2.) + SIDE_PANEL_DEFAULT_WIDTH + SIDE_PANEL_SIDE_MARGIN
+                - (CENTRAL_PANEL_CONTEXT_WIDTH / 2.);
+        }
         Window::new("")
             .id(egui::Id::new("window_for_labels"))
             .resizable(false)
             .collapsible(false)
             .title_bar(false)
             .enabled(false)
+            .default_size(Vec2::new(
+                CENTRAL_PANEL_CONTEXT_WIDTH,
+                CENTRAL_PANEL_CONTEXT_HEIGHT,
+            ))
             .frame(Frame {
-                margin: Vec2::new(20., 0.),
+                margin: Vec2::new(0., 0.),
                 stroke: Stroke::new(3., colors::BUTTON_STROKE_COLOR),
                 fill: colors::BUTTON_BACKGROUND_COLOR,
                 ..Default::default()
@@ -99,7 +108,7 @@ impl StyledCentralPanel {
         Self {
             panel: CentralPanel::default().frame(Frame {
                 margin: Vec2::new(
-                    (window_width - CENTRAL_PANEL_CONTEXT_WIDTH) / 2.,
+                    (window_width - SIDE_PANEL_DEFAULT_WIDTH - CENTRAL_PANEL_CONTEXT_WIDTH) / 2.,
                     CENTRAL_PANEL_CONTEXT_HEIGHT,
                 ),
                 fill: colors::GENERAL_BACKGROUND_COLOR,
