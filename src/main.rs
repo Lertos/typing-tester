@@ -42,6 +42,7 @@ pub enum AppState {
 enum Stage {
     DrawPanels,
     DrawWindows,
+    UpdateTimer,
 }
 
 fn main() {
@@ -75,11 +76,17 @@ fn main() {
             Stage::DrawWindows,
             SystemStage::parallel(),
         )
+        .add_stage_after(
+            Stage::DrawWindows,
+            Stage::UpdateTimer,
+            SystemStage::parallel(),
+        )
         // STARTUP SYSTEMS
         .add_startup_system(setup)
         .add_startup_system(setup_fonts)
         // SYSTEMS
         .add_system_to_stage(Stage::DrawPanels, draw_ui)
+        .add_system_to_stage(Stage::UpdateTimer, update_game_timer)
         //.add_system_to_stage(Stage::DrawWindows, draw_windows)
         .run();
 }
@@ -92,20 +99,39 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
         enabled: false,
     });
 
+    commands.insert_resource(GeneralTimer(Timer::from_seconds(1.0, true)));
+    commands.insert_resource(GameTimer(0));
+
     create_new_word_list(commands);
 }
 
+struct GeneralTimer(Timer);
+
+struct GameTimer(u8);
+
+fn update_game_timer(time: Res<Time>, mut timer: ResMut<GeneralTimer>, mut game_timer: ResMut<GameTimer>, app_state: Res<State<AppState>>){
+    if timer.0.tick(time.delta()).just_finished() {
+        if app_state.current() == &AppState::Playing {
+            if game_timer.0 > 0 {
+                game_timer.0 -= 1;
+            }
+        }
+    }
+}
+
 fn draw_ui(
-    commands: Commands,
+    mut commands: Commands,
     mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
     word_list: ResMut<WordList>,
     mut player_word_list: ResMut<PlayerWordList>,
     mut word_list_index: ResMut<WordListIndex>,
+    game_timer: Res<GameTimer>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
 ) {
     let input_enabled = input_text.enabled;
+    let input_empty = input_text.text.is_empty();
     let mut move_index_by = 0;
 
     let window = windows.get_primary_mut().unwrap();
@@ -118,6 +144,7 @@ fn draw_ui(
                 if button_start.clicked() {
                     if app_state.current() != &AppState::ReadyToPlay {
                         app_state.set(AppState::ReadyToPlay).unwrap();
+                        commands.insert_resource(GameTimer(60));
                         create_new_word_list(commands);
                     }
                     input_text.text = "".to_string();
@@ -158,7 +185,7 @@ fn draw_ui(
                 if app_state.current() == &AppState::ReadyToPlay {
                     ui.heading("Type to Begin");
                 } else {
-                    ui.heading("");
+                    ui.heading(game_timer.0.to_string());
                 }
                 ui.add_space(20.);
 
@@ -187,7 +214,7 @@ fn draw_ui(
                 // Load previous input contents on backspace
                 else if input.changed() && ui.input().key_pressed(egui::Key::Backspace) {
                     if app_state.current() == &AppState::Playing {
-                        if word_list_index.current_index > 0 && input_text.text.is_empty() {
+                        if word_list_index.current_index > 0 && input_empty {
                             move_index_by = -1;
                         }
                     }
