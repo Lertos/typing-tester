@@ -313,12 +313,16 @@ fn draw_ui(
                 //Clear the input field for the next round of typing
                 if move_index_by == 1 {
                     word_list_index.current_index += 1;
-                    player_word_list.list.push(input_text.text.to_string());
+                    player_word_list
+                        .list
+                        .push(input_text.text.trim().to_string());
                     input_text.text = "".to_string();
                 } else if move_index_by == -1 {
                     word_list_index.current_index -= 1;
-                    input_text.text =
-                        player_word_list.list[word_list_index.current_index].to_string();
+                    input_text.text = player_word_list.list[word_list_index.current_index]
+                        .trim()
+                        .to_string();
+                    player_word_list.list.pop();
                 }
             });
         });
