@@ -102,7 +102,7 @@ fn setup(mut commands: Commands, mut ctx: ResMut<EguiContext>) {
     commands.insert_resource(GeneralTimer(Timer::from_seconds(1.0, true)));
     commands.insert_resource(GameTimer(0));
 
-    create_new_word_list(commands);
+    create_new_word_list(&mut commands);
 }
 
 struct GeneralTimer(Timer);
@@ -123,10 +123,11 @@ fn draw_ui(
     mut commands: Commands,
     mut app_state: ResMut<State<AppState>>,
     mut input_text: ResMut<InputField>,
-    word_list: ResMut<WordList>,
+    word_list: Res<WordList>,
     mut player_word_list: ResMut<PlayerWordList>,
     mut word_list_index: ResMut<WordListIndex>,
     game_timer: Res<GameTimer>,
+    final_game_stats: Option<Res<GameStats>>,
     mut ctx: ResMut<EguiContext>,
     mut windows: ResMut<Windows>,
 ) {
@@ -144,8 +145,8 @@ fn draw_ui(
                 if button_start.clicked() {
                     if app_state.current() != &AppState::ReadyToPlay {
                         app_state.set(AppState::ReadyToPlay).unwrap();
-                        commands.insert_resource(GameTimer(10));
-                        create_new_word_list(commands);
+                        commands.insert_resource(GameTimer(60));
+                        create_new_word_list(&mut commands);
                     }
                     input_text.text = "".to_string();
                     input_text.enabled = true;
@@ -183,19 +184,36 @@ fn draw_ui(
                     ui.heading("TODO: FAQ");
                     return;
                 } else if app_state.current() == &AppState::GameOver {
-                    ui.heading("TODO: GAMEOVER");
+                    if let Some(final_game_stats) = final_game_stats {
+                        ui.add(Label::new(RichText::new("TIMES UP").heading().color(Color32::GREEN)));
+                        ui.add_space(60.);
+    
+                        ui.heading("CPM");
+                        ui.add(Label::new(RichText::new(final_game_stats.cpm.to_string()).color(Color32::YELLOW)));
+                        ui.add_space(30.);
+    
+                        ui.heading("Correct CPM");
+                        ui.add(Label::new(RichText::new(final_game_stats.correct_cpm.to_string()).color(Color32::YELLOW)));
+                        ui.add_space(30.);
+    
+                        ui.heading("WPM");
+                        ui.add(Label::new(RichText::new(final_game_stats.wpm.to_string()).color(Color32::YELLOW)));
+                        ui.add_space(30.);
+                    }
                     return;
                 } else if app_state.current() == &AppState::Playing {
                     ui.heading(game_timer.0.to_string());
 
                     if game_timer.0 == 0 {
+                        let game_stats = get_game_stats(&word_list.list, &player_word_list.list);
+                        commands.insert_resource(game_stats);
                         app_state.set(AppState::GameOver).unwrap();
                         return;
                     }
                 } else if app_state.current() == &AppState::ReadyToPlay {
                     ui.heading("Type to Begin");
                 }
-                
+
                 ui.add_space(20.);
 
                 let input = ui.add_sized(
@@ -359,7 +377,7 @@ fn draw_ui(
         });
 }
 
-fn create_new_word_list(mut commands: Commands) {
+fn create_new_word_list(commands: &mut Commands) {
     let all_words = AllWords::new();
 
     commands.insert_resource(AllWords::new());
@@ -441,4 +459,52 @@ fn create_label(ui: &mut Ui, letter: &str, color: Color32) {
             .color(color)
             .background_color(Color32::BLACK),
     ));
+}
+
+struct GameStats {
+    cpm: u16,
+    correct_cpm: u16,
+    wpm: u16
+}
+
+fn get_game_stats(word_list: &Vec<String>, player_word_list: &Vec<String>) -> GameStats {
+    let mut cpm: u16 = 0;
+    let mut correct_cpm: u16 = 0;
+    let mut wpm: u16 = 0;
+
+    for i in 0..player_word_list.len() {
+        let word_length = word_list[i].len() as u16;
+        let player_word_length = player_word_list[i].len() as u16;
+
+        // If the player typed more chararacters its already wrong
+        if player_word_length > word_length {
+            cpm += player_word_length as u16;
+            continue;
+        }
+
+        // If the two strings are the same, increment the wpm by 1 and count the characters
+        if player_word_list[i] == word_list[i] {
+            cpm += player_word_length;
+            correct_cpm += player_word_length;
+            wpm += 1;
+        } 
+        // If the strings are different, only count the correct characters
+        else {
+            let mut player_chars = player_word_list[i].chars();
+            let mut word_chars = word_list[i].chars();
+
+            for _ in 0..player_word_length {
+                if player_chars.next() == word_chars.next() {
+                    correct_cpm += 1;
+                }
+                cpm += 1;
+            }
+        }
+    }
+
+    GameStats {
+        cpm,
+        correct_cpm,
+        wpm,
+    }
 }
