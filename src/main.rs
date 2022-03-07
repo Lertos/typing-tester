@@ -144,7 +144,7 @@ fn draw_ui(
                 if button_start.clicked() {
                     if app_state.current() != &AppState::ReadyToPlay {
                         app_state.set(AppState::ReadyToPlay).unwrap();
-                        commands.insert_resource(GameTimer(60));
+                        commands.insert_resource(GameTimer(10));
                         create_new_word_list(commands);
                     }
                     input_text.text = "".to_string();
@@ -171,6 +171,8 @@ fn draw_ui(
         .central_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                //TODO: Break all of these into a "screens" class and add a match statement
+                //for the state - then add all the respective UI in each of those (func for each)
                 if app_state.current() == &AppState::Menu {
                     ui.heading("Press Start");
                     return;
@@ -180,13 +182,20 @@ fn draw_ui(
                 } else if app_state.current() == &AppState::FAQ {
                     ui.heading("TODO: FAQ");
                     return;
-                }
-
-                if app_state.current() == &AppState::ReadyToPlay {
-                    ui.heading("Type to Begin");
-                } else {
+                } else if app_state.current() == &AppState::GameOver {
+                    ui.heading("TODO: GAMEOVER");
+                    return;
+                } else if app_state.current() == &AppState::Playing {
                     ui.heading(game_timer.0.to_string());
+
+                    if game_timer.0 == 0 {
+                        app_state.set(AppState::GameOver).unwrap();
+                        return;
+                    }
+                } else if app_state.current() == &AppState::ReadyToPlay {
+                    ui.heading("Type to Begin");
                 }
+                
                 ui.add_space(20.);
 
                 let input = ui.add_sized(
@@ -224,12 +233,6 @@ fn draw_ui(
                     // Start the game
                     if app_state.current() == &AppState::ReadyToPlay {
                         app_state.set(AppState::Playing).unwrap();
-                    }
-
-                    if app_state.current() == &AppState::ReadyToPlay
-                        || app_state.current() == &AppState::Playing
-                    {
-                        //Logic to check correct/incorrect of key pressed versus word
                     }
                 }
                 // To make sure the focus is always on the input
