@@ -2,7 +2,7 @@
 
 A 60 second test to see how fast you can type.
 
-**NOTE: **When you press backspace to go to the previous word the typing cursor will not go to the end - it will be at the beginning. Sadly "egui" doesn't let you manually move the cursor.
+**NOTE:** When you press backspace to go to the previous word the typing cursor will not go to the end - it will be at the beginning. Sadly "egui" doesn't let you manually move the cursor.
 
 ## How it works
 
