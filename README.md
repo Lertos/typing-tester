@@ -9,8 +9,8 @@ A 60 second test to see how fast you can type.
 The test gives you a list of randomly selected words. You have 60 seconds to type as many as possibly can before time runs out.
 
 After the time is up there will be some calculations done:
-- CPM - The characters you typed in 60 seconds
-- Correct CPM - The characters that were correctly typed
-- WPM - The words you were able to type in 60 seconds
+- **CPM** - The characters you typed in 60 seconds
+- **Correct CPM** - The characters that were correctly typed
+- **WPM** - The words you were able to type in 60 seconds
 
 
