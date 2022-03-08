@@ -13,4 +13,5 @@ After the time is up there will be some calculations done:
 - **Correct CPM** - The characters that were correctly typed
 - **WPM** - The words you were able to type in 60 seconds
 
+![Demo](https://github.com/Lertos/typing-tester/blob/master/demo.JPG)
 
