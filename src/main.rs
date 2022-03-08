@@ -34,14 +34,12 @@ pub enum AppState {
     ReadyToPlay,
     Playing,
     GameOver,
-    Scores,
     FAQ,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, StageLabel)]
 enum Stage {
     DrawPanels,
-    DrawWindows,
     UpdateTimer,
 }
 
@@ -73,11 +71,6 @@ fn main() {
         )
         .add_stage_after(
             Stage::DrawPanels,
-            Stage::DrawWindows,
-            SystemStage::parallel(),
-        )
-        .add_stage_after(
-            Stage::DrawWindows,
             Stage::UpdateTimer,
             SystemStage::parallel(),
         )
@@ -87,7 +80,6 @@ fn main() {
         // SYSTEMS
         .add_system_to_stage(Stage::DrawPanels, draw_ui)
         .add_system_to_stage(Stage::UpdateTimer, update_game_timer)
-        //.add_system_to_stage(Stage::DrawWindows, draw_windows)
         .run();
 }
 
@@ -109,7 +101,12 @@ struct GeneralTimer(Timer);
 
 struct GameTimer(u8);
 
-fn update_game_timer(time: Res<Time>, mut timer: ResMut<GeneralTimer>, mut game_timer: ResMut<GameTimer>, app_state: Res<State<AppState>>){
+fn update_game_timer(
+    time: Res<Time>,
+    mut timer: ResMut<GeneralTimer>,
+    mut game_timer: ResMut<GameTimer>,
+    app_state: Res<State<AppState>>,
+) {
     if timer.0.tick(time.delta()).just_finished() {
         if app_state.current() == &AppState::Playing {
             if game_timer.0 > 0 {
@@ -152,13 +149,6 @@ fn draw_ui(
                     input_text.enabled = true;
                 }
 
-                let button_scores = StyledButton::new("SCORES").ui(ui);
-                if button_scores.clicked() {
-                    if app_state.current() != &AppState::Scores {
-                        app_state.set(AppState::Scores).unwrap();
-                    }
-                }
-
                 let button_new = StyledButton::new("FAQ").ui(ui);
                 if button_new.clicked() {
                     if app_state.current() != &AppState::FAQ {
@@ -172,32 +162,61 @@ fn draw_ui(
         .central_panel()
         .show(ctx.ctx_mut(), |ui| {
             ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                //TODO: Break all of these into a "screens" class and add a match statement
-                //for the state - then add all the respective UI in each of those (func for each)
                 if app_state.current() == &AppState::Menu {
                     ui.heading("Press Start");
                     return;
-                } else if app_state.current() == &AppState::Scores {
-                    ui.heading("TODO: Scores");
-                    return;
                 } else if app_state.current() == &AppState::FAQ {
-                    ui.heading("TODO: FAQ");
+                    ui.add(Label::new(
+                        RichText::new("FAQ").heading().color(Color32::GREEN),
+                    ));
+                    ui.add_space(60.);
+
+                    ui.heading("CPM");
+                    ui.add(Label::new(
+                        RichText::new("The amount of characters you typed in a minute")
+                            .color(Color32::YELLOW),
+                    ));
+                    ui.add_space(30.);
+
+                    ui.heading("Correct CPM");
+                    ui.add(Label::new(
+                        RichText::new("The amount of characters you typed that were correct")
+                            .color(Color32::YELLOW),
+                    ));
+                    ui.add_space(30.);
+
+                    ui.heading("WPM");
+                    ui.add(Label::new(
+                        RichText::new("The amount of words you typed in a minute")
+                            .color(Color32::YELLOW),
+                    ));
+                    ui.add_space(30.);
+
                     return;
                 } else if app_state.current() == &AppState::GameOver {
                     if let Some(final_game_stats) = final_game_stats {
-                        ui.add(Label::new(RichText::new("TIMES UP").heading().color(Color32::GREEN)));
+                        ui.add(Label::new(
+                            RichText::new("TIMES UP").heading().color(Color32::GREEN),
+                        ));
                         ui.add_space(60.);
-    
+
                         ui.heading("CPM");
-                        ui.add(Label::new(RichText::new(final_game_stats.cpm.to_string()).color(Color32::YELLOW)));
+                        ui.add(Label::new(
+                            RichText::new(final_game_stats.cpm.to_string()).color(Color32::YELLOW),
+                        ));
                         ui.add_space(30.);
-    
+
                         ui.heading("Correct CPM");
-                        ui.add(Label::new(RichText::new(final_game_stats.correct_cpm.to_string()).color(Color32::YELLOW)));
+                        ui.add(Label::new(
+                            RichText::new(final_game_stats.correct_cpm.to_string())
+                                .color(Color32::YELLOW),
+                        ));
                         ui.add_space(30.);
-    
+
                         ui.heading("WPM");
-                        ui.add(Label::new(RichText::new(final_game_stats.wpm.to_string()).color(Color32::YELLOW)));
+                        ui.add(Label::new(
+                            RichText::new(final_game_stats.wpm.to_string()).color(Color32::YELLOW),
+                        ));
                         ui.add_space(30.);
                     }
                     return;
@@ -464,7 +483,7 @@ fn create_label(ui: &mut Ui, letter: &str, color: Color32) {
 struct GameStats {
     cpm: u16,
     correct_cpm: u16,
-    wpm: u16
+    wpm: u16,
 }
 
 fn get_game_stats(word_list: &Vec<String>, player_word_list: &Vec<String>) -> GameStats {
@@ -487,7 +506,7 @@ fn get_game_stats(word_list: &Vec<String>, player_word_list: &Vec<String>) -> Ga
             cpm += player_word_length;
             correct_cpm += player_word_length;
             wpm += 1;
-        } 
+        }
         // If the strings are different, only count the correct characters
         else {
             let mut player_chars = player_word_list[i].chars();

@@ -6,7 +6,7 @@ use bevy_egui::egui::{
 use crate::colors;
 
 const SIDE_PANEL_DEFAULT_WIDTH: f32 = 200.;
-const SIDE_PANEL_TOP_MARGIN: f32 = 200.; //TODO: Calculate based on window height
+const SIDE_PANEL_TOP_MARGIN: f32 = 200.;
 const SIDE_PANEL_SIDE_MARGIN: f32 = 10.;
 
 pub const CENTRAL_PANEL_CONTEXT_WIDTH: f32 = 700.;
@@ -80,14 +80,13 @@ pub struct StyledSidePanel {
 }
 
 impl StyledSidePanel {
-    //TODO: Add window height as a param and calculate the margin
     pub fn new() -> Self {
         Self {
             panel: SidePanel::left("left_panel")
                 .default_width(SIDE_PANEL_DEFAULT_WIDTH)
                 .resizable(false)
                 .frame(Frame {
-                    margin: Vec2::new(SIDE_PANEL_SIDE_MARGIN, SIDE_PANEL_TOP_MARGIN), //TODO: Change based on window height
+                    margin: Vec2::new(SIDE_PANEL_SIDE_MARGIN, SIDE_PANEL_TOP_MARGIN),
                     fill: colors::BUTTON_MENU_BACKGROUND_COLOR,
                     ..Default::default()
                 }),
